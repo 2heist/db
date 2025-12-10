@@ -1,0 +1,101 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "./my_prisma_lib"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model car {
+  car_id          Int               @id @default(autoincrement())
+  license_plate   String            @unique @db.VarChar(20)
+  year            Int?
+  price_per_hour  Decimal           @db.Decimal(10, 2)
+  location_id     Int?
+  status_id       Int?
+  model_id        Int
+  car_location    car_location?     @relation(fields: [location_id], references: [location_id], onUpdate: NoAction)
+  car_status      car_status?       @relation(fields: [status_id], references: [status_id], onDelete: Restrict, onUpdate: NoAction)
+  car_model       car_model         @relation(fields: [model_id], references: [model_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_car_model")
+  rent            rent[]
+  review          review[]
+  maintenance_log maintenance_log[]
+}
+
+model car_location {
+  location_id Int    @id @default(autoincrement())
+  city        String @db.VarChar(100)
+  address     String @db.VarChar(200)
+  car         car[]
+}
+
+model car_model {
+  model_id   Int    @id @default(autoincrement())
+  brand      String @db.VarChar(50)
+  model_name String @db.VarChar(50)
+  car        car[]
+
+  @@unique([brand, model_name])
+}
+
+model car_status {
+  status_id   Int    @id @default(autoincrement())
+  status_name String @unique @db.VarChar(50)
+  car         car[]
+}
+
+model payment {
+  payment_id     Int       @id @default(autoincrement())
+  amount         Decimal   @db.Decimal(10, 2)
+  payment_method String    @db.VarChar(50)
+  payment_date   DateTime? @default(now()) @db.Timestamp(6)
+  status         String?   @default("success") @db.VarChar(20)
+  rent_id        Int
+  rent           rent      @relation(fields: [rent_id], references: [rent_id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model rent {
+  rent_id    Int       @id @default(autoincrement())
+  start_time DateTime  @db.Timestamp(6)
+  end_time   DateTime? @db.Timestamp(6)
+  total_cost Decimal?  @db.Decimal(10, 2)
+  status     String?   @default("active") @db.VarChar(20)
+  user_id    Int
+  car_id     Int
+  payment    payment[]
+  car        car       @relation(fields: [car_id], references: [car_id], onDelete: Cascade, onUpdate: NoAction)
+  users      users     @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model review {
+  review_id  Int       @id @default(autoincrement())
+  rating     Int
+  comment    String?
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+  user_id    Int?
+  car_id     Int?
+  car        car?      @relation(fields: [car_id], references: [car_id], onDelete: Cascade, onUpdate: NoAction)
+  users      users?    @relation(fields: [user_id], references: [user_id], onUpdate: NoAction)
+}
+
+model users {
+  user_id               Int       @id @default(autoincrement())
+  name                  String    @db.VarChar(100)
+  email                 String    @unique @db.VarChar(150)
+  phone_number          String    @db.VarChar(20)
+  driver_license_number String    @unique @db.VarChar(50)
+  created_at            DateTime? @default(now()) @db.Timestamp(6)
+  is_vip                Boolean   @default(false)
+  rent                  rent[]
+  review                review[]
+}
+
+model maintenance_log {
+  log_id      Int      @id @default(autoincrement())
+  car_id      Int
+  description String
+  log_date    DateTime @default(now()) @db.Timestamp(6)
+  car         car      @relation(fields: [car_id], references: [car_id], onDelete: Cascade)
+}
